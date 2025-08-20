@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Pivot Compare (Minimal)", layout="wide")
-st.title("📊 Pivot Compare — Minimal Fast Build")
+st.set_page_config(page_title="Pivot Compare (Fast)", layout="wide")
+st.title("📊 Pivot Compare — Fast Deploy")
 
 c1, c2 = st.columns(2)
 with c1:
@@ -26,33 +26,32 @@ def coerce_num(df):
 
 if f1 and f2:
     df1, df2 = load_csv(f1), load_csv(f2)
-    st.write("✅ Uploaded:", f1.name, "and", f2.name)
-
     shared = sorted(set(df1.columns) & set(df2.columns))
     if not shared:
         st.error("No shared columns between the two files.")
     else:
-        obj_guess = [c for c in shared if (df1[c].dtype == 'object') or (df2[c].dtype == 'object')]
+        # guess keys = shared object columns
+        obj_guess = [c for c in shared if (df1[c].dtype == "object") or (df2[c].dtype == "object")]
         keys = st.multiselect("Key columns", shared, default=obj_guess[:3])
 
-        if not keys:
-            st.info("Pick at least one key column.")
-        else:
+        if keys:
             df1, df2 = coerce_num(df1[shared]), coerce_num(df2[shared])
             A = df1.groupby(keys, dropna=False).sum(numeric_only=True).reset_index()
             B = df2.groupby(keys, dropna=False).sum(numeric_only=True).reset_index()
             merged = A.merge(B, on=keys, how="outer", suffixes=(" | Last"," | This"))
 
-            # Build change columns for every shared numeric heading
             for c in shared:
                 if c in keys: 
                     continue
-                col_last, col_this = f"{c} | Last", f"{c} | This"
-                if col_last in merged and col_this in merged:
-                    if pd.api.types.is_numeric_dtype(merged[col_last]) and pd.api.types.is_numeric_dtype(merged[col_this]):
-                        merged[f"{c} | Change"] = merged[col_this] - merged[col_last]
-                        last = merged[col_last]
-                        this = merged[col_this]
-                        merged[f"{c} | % Change"] = (this - last) / last.replace(0, pd.NA) * 100
+                last, this = f"{c} | Last", f"{c} | This"
+                if last in merged and this in merged:
+                    if pd.api.types.is_numeric_dtype(merged[last]) and pd.api.types.is_numeric_dtype(merged[this]):
+                        merged[f"{c} | Change"] = merged[this] - merged[last]
+                        denom = merged[last].replace(0, pd.NA)
+                        merged[f"{c} | % Change"] = (merged[this] - merged[last]) / denom * 100
 
             st.dataframe(merged, use_container_width=True)
+        else:
+            st.info("Pick at least one key column.")
+else:
+    st.info("Upload two CSV pivot tables to begin.")
