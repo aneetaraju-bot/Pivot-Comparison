@@ -1,4 +1,2 @@
 streamlit==1.37.1
 pandas==2.2.2
-# Add the line below only if you want charts (optional)
-# plotly==5.22.0
